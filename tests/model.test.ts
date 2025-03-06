@@ -7,11 +7,11 @@ import { Octokit } from 'octokit'
 
 import * as controllers from '../src/controllers.js'
 
-const auth = readFileSync('github.token').toString().trim()
+const auth = "password"
 const kit = new Octokit({ auth })
 
 const owner = 'thejohnfreeman'
-const repo = 'zlib'
+const repo = 'fictitious-lib'
 const tag = '0.1.0'
 const rrev = 'cd07abece43e2ce4ae64cd32a69fc6ca'
 
@@ -31,11 +31,12 @@ function fakeRequest(
 ) {
   body.headers = { 'Authorization': bearer, ...headers }
   body.get = function (header) { return this.headers[header] }
+  body.app = { locals: { owner, repo, branch: 'conan_remote' } }
   body.params = {
     name: repo,
     version: tag,
-    user: 'github',
-    channel: owner,
+    user: '_',
+    channel: '_',
     ...params,
   }
   return body
@@ -53,17 +54,6 @@ test('octokit', async () => {
 })
 
 const REGEXP_DIGEST = /[0-9a-fA-F]+/
-
-test('GET /:recipe', async () => {
-  const req = fakeRequest()
-  const res = fakeResponse()
-  await controllers.getRecipe(req, res)
-  expect(res.send).toBeCalledWith({
-    'conanfile.py': expect.stringMatching(REGEXP_DIGEST),
-    'conanmanifest.txt': expect.stringMatching(REGEXP_DIGEST),
-    'conan_sources.tgz': expect.stringMatching(REGEXP_DIGEST),
-  })
-})
 
 const expectRevision = {
   revision: expect.stringMatching(REGEXP_DIGEST),

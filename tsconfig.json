@@ -6,6 +6,7 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "types": ["node", "jest"],
-    "outDir": "dist"
+    "outDir": "dist",
+    "sourceMap": true
   }
 }

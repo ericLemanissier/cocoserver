@@ -1,0 +1,25 @@
+upload
+"GET /v1/ping HTTP/1.1" 200 0
+"GET /v2/conans/zlib/1.3.1/_/_/revisions HTTP/1.1" 404 34
+"GET /v2/users/check_credentials HTTP/1.1" 200 4
+"PUT /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conan_export.tgz HTTP/1.1" 200 0
+"PUT /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conan_sources.tgz HTTP/1.1" 200 0
+"PUT /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conanfile.py HTTP/1.1" 200 0
+"PUT /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conanmanifest.txt HTTP/1.1" 200 0
+
+already existing upload
+"GET /v1/ping HTTP/1.1" 200 0
+"GET /v2/conans/zlib/1.3.1/_/_/revisions HTTP/1.1" 200 109
+"revisions": [{"revision": "bb18add894078bfa9c80db5b64b606ac", "time": "2025-03-04T17:38:33.106510+00:00"}]}
+"GET /v2/users/check_credentials HTTP/1.1" 200 4
+
+
+download
+"GET /v1/ping HTTP/1.1" 200 0
+"GET /v2/conans/zlib/1.3.1/_/_/latest HTTP/1.1" 200 92
+"GET /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files HTTP/1.1" 200 105
+{"files": {"conan_export.tgz": {}, "conanfile.py": {}, "conanmanifest.txt": {}, "conan_sources.tgz": {}}}
+"GET /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conanfile.py HTTP/1.1" 200 4285
+"GET /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conanmanifest.txt HTTP/1.1" 200 189
+"GET /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/files/conan_export.tgz HTTP/1.1" 200 1102
+"GET /v2/conans/zlib/1.3.1/_/_/revisions/bb18add894078bfa9c80db5b64b606ac/packages/72c852c5f0ae27ca0b1741e5fd7c8b8be91a590a/latest HTTP/1.1" 404 116

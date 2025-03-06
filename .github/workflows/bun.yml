@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+        scope: ${{ github.repository_owner }}
+        registry-url: "https://npm.pkg.github.com/"
+    - run: bun install
+    - run: bun tsc
+    - run: |
+        pipx install conan
+        bun src/serve.ts -- --owner ${{ github.repository_owner }} --repo ${GITHUB_REPOSITORY#*/} --folder test&
+        sleep 10
+        tests/test.sh
+      env:
+        CONAN_LOGIN_USERNAME_COCOSERVER: ${{ github.repository_owner }}
+        CONAN_PASSWORD_COCOSERVER: ${{ secrets.GITHUB_TOKEN }}
+        FILEN_EMAIL: ${{ secrets.FILEN_EMAIL }}
+        FILEN_PASSWORD: ${{ secrets.FILEN_PASSWORD }}
+    
+    - run: bun publish --access public
+      env:
+        BUN_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

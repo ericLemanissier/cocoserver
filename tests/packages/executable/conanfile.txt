@@ -1,5 +1,5 @@
 [requires]
-zlib/0.1.0@github/thejohnfreeman
+fictitious-lib/0.1.0
 
 [generators]
 CMakeDeps

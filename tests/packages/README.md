@@ -2,7 +2,7 @@
 imported by package `executable`
 that builds an executable linked to that library.
 
-`library` has to be published to Redirectory for testing,
+`library` has to be published to Cocoserver for testing,
 which means it must have a GitHub project with the same name.
 I already have an empty `zlib` project on GitHub
 that I've been using for these tests.

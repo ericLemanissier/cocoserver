@@ -1,6 +1,13 @@
 {
-  "name": "redirectory",
+  "name": "@ericlemanissier/cocoserver",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ericlemanissier/cocoserver.git"
+  },
   "version": "0.1.0",
+  "bin": {
+    "cocoserver": "src/serve.ts"
+  },
   "description": "An Artifactory impostor that redirects to GitHub",
   "main": "index.js",
   "type": "module",
@@ -14,12 +21,11 @@
   "author": "John Freeman <jfreeman08@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@octokit/auth-oauth-app": "^7.0.1",
+    "@filen/sdk": "^0.1.193",
+    "commander": "^13.1.0",
     "express": "^5.0.0-beta.1",
-    "express-winston": "^4.2.0",
-    "jsonwebtoken": "^9.0.2",
-    "octokit": "^4.1.0",
-    "winston": "^3.10.0"
+    "minimatch": "^10.0.1",
+    "octokit": "^4.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
@@ -30,5 +36,10 @@
     "prettier": "^3.0.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.1.6"
-  }
+  },
+  "files": [
+    "jest.config.js",
+    "src/",
+    "tsconfig.json"
+  ]
 }

@@ -2,10 +2,8 @@ from conan import ConanFile
 from conan.tools.cmake import CMake
 
 class Library(ConanFile):
-    name = 'zlib'
+    name = 'fictitious-lib'
     version = '0.1.0'
-    default_user = 'github'
-    default_channel = 'thejohnfreeman'
 
     settings = 'os', 'compiler', 'build_type', 'arch'
     options = {'shared': [True, False], 'fPIC': [True, False]}

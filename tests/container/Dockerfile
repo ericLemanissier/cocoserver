@@ -1,4 +1,4 @@
-# sudo docker build . --tag redirectory
+# sudo docker build . --tag cocoserver
 FROM ubuntu:22.04
 WORKDIR /root
 COPY install.sh .
