@@ -1,0 +1,4 @@
+1742649984
+conanfile.py: 2c22e8b288c22a0802761fb7a8a3c65b
+export_source/CMakeLists.txt: cbfbbc605d9c029a47600812497601e8
+export_source/include/library.h: 43f1f1f6ba7708d13801c3272428ceb4
