@@ -4,7 +4,7 @@ import * as http from './http.js'
 
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { rm, mkdtemp, readFile } from 'node:fs/promises'
+import { rm, mkdtemp, readFile, writeFile, stat } from 'node:fs/promises'
 import { createWriteStream } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -229,7 +229,13 @@ export async function getPackageRevisionFile(req, res) {
 export async function putPackageRevisionFile(req, res) {
   const package_folder = request_to_path(req).join('/')
   const source_dir = await mkdtemp(join(tmpdir(), "rp"));
-  await pipeline(req, createWriteStream(`${source_dir}/${req.params.filename}`))
+  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${req.params.filename}`))
+  if( req.params.filename == "conaninfo.txt" ){
+    const stats = await stat(`${source_dir}/${req.params.filename}`)
+    if ( stats.size == 0 )
+      await writeFile(`${source_dir}/${req.params.filename}`, "\n")
+  }
+
   const uploaded_file = await req.app.locals.filen.fs().upload({
     path: `${package_folder}/${req.params.filename}`,
     source: `${source_dir}/${req.params.filename}`})
@@ -299,15 +305,34 @@ export async function putRecipeRevisionFile(req, res) {
   const buffer: Buffer = await readStream(req)
   const base64String = buffer.toString('base64')
 
-  const result = await octokit.rest.repos.createOrUpdateFileContents({
-    owner: req.app.locals.owner,
-    repo: req.app.locals.repo,
-    content: base64String,
-    message: `${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}#${req.params.rrev} ${req.params.filename}`,
-    path: `${request_to_path(req).join('/')}/export/${req.params.filename}`,
-    branch: req.app.locals.branch,
-  })
-  return res.status(result.status).send()
+  try {
+    const result = await octokit.rest.repos.createOrUpdateFileContents({
+      owner: req.app.locals.owner,
+      repo: req.app.locals.repo,
+      content: base64String,
+      message: `${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}#${req.params.rrev} ${req.params.filename}`,
+      path: `${request_to_path(req).join('/')}/export/${req.params.filename}`,
+      branch: req.app.locals.branch,
+    })
+    return res.status(result.status).send()
+  } catch (error) {
+    console.warn("caught error", error)
+
+    const result = await octokit.rest.repos.getContent({
+      owner: req.app.locals.owner,
+      repo: req.app.locals.repo,
+      path: `${request_to_path(req).join('/')}/export/${req.params.filename}`,
+      branch: req.app.locals.branch,
+      mediaType: {
+        format: "application/vnd.github.raw+json",
+      },
+    })
+
+    if( "content" in result && result.content === base64String && "encoding" in result && result.encoding === "base64" )
+      return
+
+    res.status(error.status).send(error.message)
+  }
 }
 
 export async function getSearch(req, res) {
