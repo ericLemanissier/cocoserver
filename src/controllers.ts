@@ -28,7 +28,6 @@ function request_to_path(req): Array<string> {
   if ('rrev' in req.params) {
     res.push(req.params.rrev)
     if ('package' in req.params) {
-      res.unshift(req.app.locals.folder)
       res.push(req.params.package)
       if ('prev' in req.params) {
         res.push(req.params.prev)
@@ -142,7 +141,7 @@ export async function deleteRecipeRevision(req, res) {
 */
 
 export async function getPackageLatest(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   let latestRevision = {
     revision: null,
     time: 0,
@@ -177,7 +176,7 @@ export async function getPackageLatest(req, res) {
 }
 
 export async function getPackageRevisions(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   let revisions = new Array()
   let rev_list : Array<string> = []
   try {
@@ -202,13 +201,13 @@ export async function getPackageRevisions(req, res) {
 
 export async function deletePackageRevision(req, res) {
   await req.app.locals.filen.fs().rmdir({
-    path: request_to_path(req).join('/')
+    path: [req.app.locals.folder, ...request_to_path(req)].join('/')
   })
   res.status(200).send()
 }
 
 export async function getPackageRevisionFiles(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
 
   res.status(200).send({ files: Object.fromEntries(
     (await req.app.locals.filen.fs().readdir({path: package_folder})).map(file => [file, {}])
@@ -217,7 +216,7 @@ export async function getPackageRevisionFiles(req, res) {
 }
 
 export async function getPackageRevisionFile(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const destination_dir = await mkdtemp(join(tmpdir(), "rp"));
   await req.app.locals.filen.fs().download({
     path: `${package_folder}/${req.params.filename}`,
@@ -227,7 +226,7 @@ export async function getPackageRevisionFile(req, res) {
 }
 
 export async function putPackageRevisionFile(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const source_dir = await mkdtemp(join(tmpdir(), "rp"));
   const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${req.params.filename}`))
   if( req.params.filename == "conaninfo.txt" ){
@@ -244,7 +243,7 @@ export async function putPackageRevisionFile(req, res) {
 }
 
 export async function getRecipeRevisionSearch(req, res) {
-  const package_folder = request_to_path(req).join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   let packages_list : Array<string> = []
   try {
     packages_list = await req.app.locals.filen.fs().readdir({path: package_folder})
