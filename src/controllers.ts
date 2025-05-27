@@ -339,8 +339,8 @@ export async function getSearch(req, res) {
   await promisify(execFile)('git', [
     'clone',
     '--bare',
-    '--depth',
-    '1',
+    '--depth=1',
+    '--filter=blob:none',
     '-b',
     req.app.locals.branch,
     `https://github.com/${req.app.locals.owner}/${req.app.locals.repo}`,
@@ -351,6 +351,26 @@ export async function getSearch(req, res) {
   for (let i = 0; i < 4; i++) {
     let newFolders: Array<string> = []
     for (const f of folders) {
+      if(f != '.') {
+        let [name, version, user, channel] = f.split('/')
+        let tokens = [name]
+        if (version){
+          tokens.push('/', version)
+          if (user) {
+            if (user != '_') tokens.push('@', user)
+            if(channel) {
+              if (channel != '_') tokens.push('/', channel)
+            }
+          }
+        }
+        let partial = ''
+        for (const token of tokens) {
+          partial += token
+        }
+        if (!minimatch(partial, req.query.q, { partial: true })) {
+          continue
+        }
+      }
       const { stdout } = await promisify(execFile)(
         'git',
         ['ls-tree', req.app.locals.branch, '--name-only', `${f}/`],
