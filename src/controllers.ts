@@ -37,44 +37,50 @@ function request_to_path(req): Array<string> {
   return res
 }
 
-export async function getRecipeLatest(req, res) {
+async function getAllRecipeRevisions(req) {
   const { user, auth, octokit } = newOctokit(req, false)
-  try {
-    const { data: folder } = await octokit.rest.repos.getContent({
-      owner: req.app.locals.owner,
-      repo: req.app.locals.repo,
-      path: request_to_path(req).join('/'),
-      ref: req.app.locals.branch,
-    })
-    if (!Array.isArray(folder)) {
-      throw http.notFound(
-        `Recipe missing: ${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}`,
-      )
-    }
-    const revisionPromises = folder
-      .filter(rev => rev.type === 'dir')
-      .map(async rev => {
+  const { data: folder } = await octokit.rest.repos.getContent({
+    owner: req.app.locals.owner,
+    repo: req.app.locals.repo,
+    path: request_to_path(req).join('/'),
+    ref: req.app.locals.branch,
+  })
+  if (!Array.isArray(folder)) {
+    throw http.notFound(
+      `Recipe missing: ${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}`,
+    )
+  }
+  const revisionPromises = folder
+    .filter(rev => rev.type === 'dir')
+    .map(async rev => {
       let retries = 5
-        while (retries-- > 0) {
+      while (retries-- > 0) {
         const manifest = await fetch(
-            `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`
+          `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`
         )
-          if (!manifest.ok) {
-            if (manifest.status === 404) {
-              await new Promise(f => setTimeout(f, 100))
-              continue
+        if (!manifest.ok) {
+          if (manifest.status === 404) {
+            await new Promise(f => setTimeout(f, 100))
+            continue
           }
           throw new http.Error(manifest.status, `Failed to fetch manifest for ${rev.path}`)
         }
         const content = await manifest.text()
         const timestamp = Number(content.split(/\r?\n/)[0])
-          return { revision: rev.name, time: timestamp }
-        }
-        throw new http.Error(500, `Failed to fetch manifest for ${rev.path} after retries`)
-      })
+        return { revision: rev.name, time: timestamp }
+      }
+      throw new http.Error(500, `Failed to fetch manifest for ${rev.path} after retries`)
+    })
+  return await Promise.all(revisionPromises)
+}
 
-    const revisions = await Promise.all(revisionPromises)
+export async function getRecipeLatest(req, res) {
+  try {
+    const revisions = await getAllRecipeRevisions(req)
 
+    if (revisions.length === 0) {
+      throw http.notFound("Not Found")
+    }
     const latestRevision = revisions.reduce(
       (latest, current) => current.time > latest.time ? current : latest,
       { revision: null, time: 0 }
@@ -91,42 +97,14 @@ export async function getRecipeLatest(req, res) {
 }
 
 export async function getRecipeRevisions(req, res) {
-  const { user, auth, octokit } = newOctokit(req, false)
   let revisions = new Array()
   try {
-    const { data: folder } = await octokit.rest.repos.getContent({
-      owner: req.app.locals.owner,
-      repo: req.app.locals.repo,
-      path: request_to_path(req).join('/'),
-      ref: req.app.locals.branch,
-    })
-    // ignore non-directory responses
-    if (!Array.isArray(folder)) {
-      throw http.notFound(`Recipe missing: ${request_to_path(req).join('/')}`)
-    }
-    for (const rev of folder) {
-      if (rev.type != 'dir') continue
-      let retries = 5
-      while (retries-- > 0){
-        const manifest = await fetch(
-          `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`,
-        )
-        if(!manifest.ok) {
-          if(manifest.status == 404){
-            await new Promise(f => setTimeout(f, 100));
-            continue;
-          }
-          throw new http.Error(manifest.status, `Failed to fetch manifest for ${rev.path}`)
-        }
-        const content = await manifest.text()
-        const timestamp = Number(content.split(/\r?\n/)[0])
-        revisions.push({
-          revision: rev.name,
-          time: new Date(timestamp * 1000).toISOString(),
-        })
-        break
+    revisions = (await getAllRecipeRevisions(req)).map(rev => {
+      return {
+        revision: rev.revision,
+        time: new Date(rev.time * 1000).toISOString(),
       }
-    }
+    })
   } catch (error) {
     if(error.status != 404) {
       console.warn("caught error", error)
@@ -142,35 +120,37 @@ export async function deleteRecipeRevision(req, res) {
 }
 */
 
-export async function getPackageLatest(req, res) {
+
+async function getAllPackageRevisions(req) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  let latestRevision = {
-    revision: null,
-    time: 0,
-  }
-  let revisions: Array<string> = []
+  let rev_list : Array<string> = []
   try {
-    revisions = await req.app.locals.filen.fs().readdir({path: package_folder})
+    rev_list = await req.app.locals.filen.fs().readdir({path: package_folder})
   } catch (error) {
     if (error.code === 'ENOENT') {
-      res.status(404).send()
-      return
+      return []
     }
     else throw error
   }
-  if(revisions.length == 0)
-  {
-    res.status(404).send()
-    return
-  }
-  for (const r of revisions) {
+  return await Promise.all(rev_list.map(async (r) => {
     const stat = await req.app.locals.filen.fs().stat({path: `${package_folder}/${r}`})
-    let created_at = Number(stat.birthtimeMs)
-    if(created_at > latestRevision.time) {
-      latestRevision.revision = r
-      latestRevision.time = created_at
+    return {
+      revision: r,
+      time: Number(stat.birthtimeMs),
     }
+  }))
+}
+
+export async function getPackageLatest(req, res) {  
+  const revisions = await getAllPackageRevisions(req)
+
+  if (revisions.length === 0) {
+    throw http.notFound("Not Found")
   }
+  const latestRevision = revisions.reduce(
+    (latest, current) => current.time > latest.time ? current : latest,
+    { revision: null, time: 0 }
+  )
   res.status(200).send({
     revision: latestRevision.revision,
     time: new Date(latestRevision.time).toISOString(),
@@ -178,26 +158,13 @@ export async function getPackageLatest(req, res) {
 }
 
 export async function getPackageRevisions(req, res) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  let revisions = new Array()
-  let rev_list : Array<string> = []
-  try {
-    rev_list = await req.app.locals.filen.fs().readdir({path: package_folder})
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      res.status(200).send({ revisions: [] })
-      return
+  
+  const revisions = (await getAllPackageRevisions(req)).map(rev => {
+    return {
+      revision: rev.revision,
+      time: new Date(rev.time).toISOString(),
     }
-    else throw error
-  }
-  for (const r of rev_list) {
-    const stat = await req.app.locals.filen.fs().stat({path: `${package_folder}/${r}`})
-    let created_at = Number(stat.birthtimeMs)
-    revisions.push({
-      revision: r,
-      time: new Date(created_at).toISOString(),
-    })
-  }
+  })
   res.status(200).send({ revisions })
 }
 
