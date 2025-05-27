@@ -46,38 +46,40 @@ export async function getRecipeLatest(req, res) {
       path: request_to_path(req).join('/'),
       ref: req.app.locals.branch,
     })
-    let latestRevision = {
-      revision: null,
-      time: 0,
-    }
     if (!Array.isArray(folder)) {
       throw http.notFound(
         `Recipe missing: ${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}`,
       )
     }
-    for (const rev of folder) {
-      if (rev.type != 'dir') continue
+    const revisionPromises = folder
+      .filter(rev => rev.type === 'dir')
+      .map(async rev => {
       let retries = 5
-      while (retries-- > 0){
+        while (retries-- > 0) {
         const manifest = await fetch(
-          `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`,
+            `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`
         )
-        if(!manifest.ok) {
-          if(manifest.status == 404){
-            await new Promise(f => setTimeout(f, 100));
-            continue;
+          if (!manifest.ok) {
+            if (manifest.status === 404) {
+              await new Promise(f => setTimeout(f, 100))
+              continue
           }
           throw new http.Error(manifest.status, `Failed to fetch manifest for ${rev.path}`)
         }
         const content = await manifest.text()
         const timestamp = Number(content.split(/\r?\n/)[0])
-        if (timestamp > latestRevision.time) {
-          latestRevision.revision = rev.name
-          latestRevision.time = timestamp
+          return { revision: rev.name, time: timestamp }
         }
-        break
-      }
-    }
+        throw new http.Error(500, `Failed to fetch manifest for ${rev.path} after retries`)
+      })
+
+    const revisions = await Promise.all(revisionPromises)
+
+    const latestRevision = revisions.reduce(
+      (latest, current) => current.time > latest.time ? current : latest,
+      { revision: null, time: 0 }
+    )
+
     res.status(200).send({
       revision: latestRevision.revision,
       time: new Date(latestRevision.time * 1000).toISOString(),

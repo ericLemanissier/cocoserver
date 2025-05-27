@@ -4,7 +4,7 @@
     "type": "git",
     "url": "https://github.com/ericlemanissier/cocoserver.git"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "bin": {
     "cocoserver": "src/serve.ts"
   },
