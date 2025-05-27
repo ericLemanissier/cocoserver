@@ -18,19 +18,28 @@ export async function deleteRecipe(req, res) {
 }
   */
 
+function sanitizeParams(req) {
+  for(const prop in req.params) {
+    if(req.params[prop].includes("..") || req.params[prop].includes("/") || req.params[prop].includes("\\"))
+      throw new http.Error(500, `incorrect param value: ${prop}=${req.params[prop]}`)
+  }
+  return req.params
+}
+
 function request_to_path(req): Array<string> {
+  const params = sanitizeParams(req)
   let res: Array<string> = [
-    req.params.name,
-    req.params.version,
-    req.params.user,
-    req.params.channel,
+    params.name,
+    params.version,
+    params.user,
+    params.channel,
   ]
-  if ('rrev' in req.params) {
-    res.push(req.params.rrev)
-    if ('package' in req.params) {
-      res.push(req.params.package)
-      if ('prev' in req.params) {
-        res.push(req.params.prev)
+  if ('rrev' in params) {
+    res.push(params.rrev)
+    if ('package' in params) {
+      res.push(params.package)
+      if ('prev' in params) {
+        res.push(params.prev)
       }
     }
   }
@@ -46,8 +55,9 @@ async function getAllRecipeRevisions(req) {
     ref: req.app.locals.branch,
   })
   if (!Array.isArray(folder)) {
+    const params = sanitizeParams(req)
     throw http.notFound(
-      `Recipe missing: ${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}`,
+      `Recipe missing: ${params.name}/${params.version}@${params.user}/${params.channel}`,
     )
   }
   const revisionPromises = folder
@@ -187,26 +197,28 @@ export async function getPackageRevisionFiles(req, res) {
 export async function getPackageRevisionFile(req, res) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const destination_dir = await mkdtemp(join(tmpdir(), "rp"));
+  const params = sanitizeParams(req)
   await req.app.locals.filen.fs().download({
-    path: `${package_folder}/${req.params.filename}`,
-    destination: `${destination_dir}/${req.params.filename}`})
-  res.status(200).send(await readFile(`${destination_dir}/${req.params.filename}`))
+    path: `${package_folder}/${params.filename}`,
+    destination: `${destination_dir}/${params.filename}`})
+  res.status(200).send(await readFile(`${destination_dir}/${params.filename}`))
   await rm(destination_dir, { recursive: true, force: true })
 }
 
 export async function putPackageRevisionFile(req, res) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const source_dir = await mkdtemp(join(tmpdir(), "rp"));
-  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${req.params.filename}`))
-  if( req.params.filename == "conaninfo.txt" ){
-    const stats = await stat(`${source_dir}/${req.params.filename}`)
+  const params = sanitizeParams(req)
+  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${params.filename}`))
+  if( params.filename == "conaninfo.txt" ){
+    const stats = await stat(`${source_dir}/${params.filename}`)
     if ( stats.size == 0 )
-      await writeFile(`${source_dir}/${req.params.filename}`, "\n")
+      await writeFile(`${source_dir}/${params.filename}`, "\n")
   }
 
   const uploaded_file = await req.app.locals.filen.fs().upload({
-    path: `${package_folder}/${req.params.filename}`,
-    source: `${source_dir}/${req.params.filename}`})
+    path: `${package_folder}/${params.filename}`,
+    source: `${source_dir}/${params.filename}`})
   res.status(201).send()
   await rm(source_dir, { recursive: true, force: true })
 }
@@ -262,9 +274,10 @@ export async function getRecipeRevisionFiles(req, res) {
 }
 
 export async function getRecipeRevisionFile(req, res) {
+  const params = sanitizeParams(req)
   return res.redirect(
     301,
-    `https://github.com/${req.app.locals.owner}/${req.app.locals.repo}/raw/refs/heads/${req.app.locals.branch}/${request_to_path(req).join('/')}/export/${req.params.filename}`,
+    `https://github.com/${req.app.locals.owner}/${req.app.locals.repo}/raw/refs/heads/${req.app.locals.branch}/${request_to_path(req).join('/')}/export/${params.filename}`,
   )
 }
 
@@ -272,14 +285,15 @@ export async function putRecipeRevisionFile(req, res) {
   const { user, auth, octokit } = newOctokit(req, true)
   const buffer: Buffer = await readStream(req)
   const base64String = buffer.toString('base64')
+  const params = sanitizeParams(req)
 
   try {
     const result = await octokit.rest.repos.createOrUpdateFileContents({
       owner: req.app.locals.owner,
       repo: req.app.locals.repo,
       content: base64String,
-      message: `${req.params.name}/${req.params.version}@${req.params.user}/${req.params.channel}#${req.params.rrev} ${req.params.filename}`,
-      path: `${request_to_path(req).join('/')}/export/${req.params.filename}`,
+      message: `${params.name}/${params.version}@${params.user}/${params.channel}#${params.rrev} ${params.filename}`,
+      path: `${request_to_path(req).join('/')}/export/${params.filename}`,
       branch: req.app.locals.branch,
     })
     return res.status(result.status).send()
@@ -289,7 +303,7 @@ export async function putRecipeRevisionFile(req, res) {
     const result = await octokit.rest.repos.getContent({
       owner: req.app.locals.owner,
       repo: req.app.locals.repo,
-      path: `${request_to_path(req).join('/')}/export/${req.params.filename}`,
+      path: `${request_to_path(req).join('/')}/export/${params.filename}`,
       branch: req.app.locals.branch,
       mediaType: {
         format: "application/vnd.github.raw+json",
