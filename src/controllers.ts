@@ -53,7 +53,7 @@ function request_to_path(req): Array<string> {
 }
 
 async function getAllRecipeRevisions(req) {
-  const { user, auth, octokit } = newOctokit(req, false)
+  const { octokit } = newOctokit(req, false)
   const { data: folder } = await octokit.rest.repos.getContent({
     owner: req.app.locals.owner,
     repo: req.app.locals.repo,
@@ -61,9 +61,9 @@ async function getAllRecipeRevisions(req) {
     ref: req.app.locals.branch,
   })
   if (!Array.isArray(folder)) {
-    const params = sanitizeParams(req)
+    const {name, version, user, channel } = sanitizeParams(req)
     throw http.notFound(
-      `Recipe missing: ${params.name}/${params.version}@${params.user}/${params.channel}`,
+      `Recipe missing: ${name}/${version}@${user}/${channel}`,
     )
   }
   const revisionPromises = folder
@@ -91,42 +91,29 @@ async function getAllRecipeRevisions(req) {
 }
 
 export async function getRecipeLatest(req, res) {
-  try {
-    const revisions = await getAllRecipeRevisions(req)
+  const revisions = await getAllRecipeRevisions(req)
 
-    if (revisions.length === 0) {
-      throw http.notFound("Not Found")
-    }
-    const latestRevision = revisions.reduce(
-      (latest, current) => current.time > latest.time ? current : latest,
-      { revision: null, time: 0 }
-    )
-
-    res.status(200).send({
-      revision: latestRevision.revision,
-      time: new Date(latestRevision.time * 1000).toISOString(),
-    })
-  } catch (error) {
-    console.warn("caught error", error)
-    res.status(error.status).send(error.message)
+  if (revisions.length === 0) {
+    throw http.notFound("Not Found")
   }
+  const latestRevision = revisions.reduce(
+    (latest, current) => current.time > latest.time ? current : latest,
+    { revision: null, time: 0 }
+  )
+
+  res.status(200).send({
+    revision: latestRevision.revision,
+    time: new Date(latestRevision.time * 1000).toISOString(),
+  })
 }
 
 export async function getRecipeRevisions(req, res) {
-  let revisions = new Array()
-  try {
-    revisions = (await getAllRecipeRevisions(req)).map(rev => {
-      return {
-        revision: rev.revision,
-        time: new Date(rev.time * 1000).toISOString(),
-      }
-    })
-  } catch (error) {
-    if(error.status != 404) {
-      console.warn("caught error", error)
-      res.status(error.status).send(error.message)
+  const revisions = (await getAllRecipeRevisions(req)).map(rev => {
+    return {
+      revision: rev.revision,
+      time: new Date(rev.time * 1000).toISOString(),
     }
-  }
+  })
   res.status(200).send({ revisions })
 }
 /*
@@ -203,28 +190,28 @@ export async function getPackageRevisionFiles(req, res) {
 export async function getPackageRevisionFile(req, res) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const destination_dir = await mkdtemp(join(tmpdir(), "rp"));
-  const params = sanitizeParams(req)
+  const { filename } = sanitizeParams(req)
   await req.app.locals.filen.fs().download({
-    path: `${package_folder}/${params.filename}`,
-    destination: `${destination_dir}/${params.filename}`})
-  res.status(200).send(await readFile(`${destination_dir}/${params.filename}`))
+    path: `${package_folder}/${filename}`,
+    destination: `${destination_dir}/${filename}`})
+  res.status(200).send(await readFile(`${destination_dir}/${filename}`))
   await rm(destination_dir, { recursive: true, force: true })
 }
 
 export async function putPackageRevisionFile(req, res) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
   const source_dir = await mkdtemp(join(tmpdir(), "rp"));
-  const params = sanitizeParams(req)
-  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${params.filename}`))
-  if( params.filename == "conaninfo.txt" ){
-    const stats = await stat(`${source_dir}/${params.filename}`)
+  const { filename } = sanitizeParams(req)
+  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${filename}`))
+  if( filename == "conaninfo.txt" ){
+    const stats = await stat(`${source_dir}/${filename}`)
     if ( stats.size == 0 )
-      await writeFile(`${source_dir}/${params.filename}`, "\n")
+      await writeFile(`${source_dir}/${filename}`, "\n")
   }
 
   const uploaded_file = await req.app.locals.filen.fs().upload({
-    path: `${package_folder}/${params.filename}`,
-    source: `${source_dir}/${params.filename}`})
+    path: `${package_folder}/${filename}`,
+    source: `${source_dir}/${filename}`})
   res.status(201).send()
   await rm(source_dir, { recursive: true, force: true })
 }
@@ -260,7 +247,7 @@ export async function getRecipeRevisionSearch(req, res) {
 }
 
 export async function getRecipeRevisionFiles(req, res) {
-  const { user, auth, octokit } = newOctokit(req, false)
+  const { octokit } = newOctokit(req, false)
   const { data: folder } = await octokit.rest.repos.getContent({
     owner: req.app.locals.owner,
     repo: req.app.locals.repo,
@@ -280,47 +267,28 @@ export async function getRecipeRevisionFiles(req, res) {
 }
 
 export async function getRecipeRevisionFile(req, res) {
-  const params = sanitizeParams(req)
+  const { filename } = sanitizeParams(req)
   return res.redirect(
     301,
-    `https://github.com/${req.app.locals.owner}/${req.app.locals.repo}/raw/refs/heads/${req.app.locals.branch}/${request_to_path(req).join('/')}/export/${params.filename}`,
+    `https://github.com/${req.app.locals.owner}/${req.app.locals.repo}/raw/refs/heads/${req.app.locals.branch}/${request_to_path(req).join('/')}/export/${filename}`,
   )
 }
 
 export async function putRecipeRevisionFile(req, res) {
-  const { user, auth, octokit } = newOctokit(req, true)
+  const { octokit } = newOctokit(req, true)
   const buffer: Buffer = await readStream(req)
   const base64String = buffer.toString('base64')
-  const params = sanitizeParams(req)
+  const { name, version, user, channel, rrev, filename } = sanitizeParams(req)
 
-  try {
-    const result = await octokit.rest.repos.createOrUpdateFileContents({
-      owner: req.app.locals.owner,
-      repo: req.app.locals.repo,
-      content: base64String,
-      message: `${params.name}/${params.version}@${params.user}/${params.channel}#${params.rrev} ${params.filename}`,
-      path: `${request_to_path(req).join('/')}/export/${params.filename}`,
-      branch: req.app.locals.branch,
-    })
-    return res.status(result.status).send()
-  } catch (error) {
-    console.warn("caught error", error)
-
-    const result = await octokit.rest.repos.getContent({
-      owner: req.app.locals.owner,
-      repo: req.app.locals.repo,
-      path: `${request_to_path(req).join('/')}/export/${params.filename}`,
-      branch: req.app.locals.branch,
-      mediaType: {
-        format: "application/vnd.github.raw+json",
-      },
-    })
-
-    if( "content" in result && result.content === base64String && "encoding" in result && result.encoding === "base64" )
-      return
-
-    res.status(error.status).send(error.message)
-  }
+  const result = await octokit.rest.repos.createOrUpdateFileContents({
+    owner: req.app.locals.owner,
+    repo: req.app.locals.repo,
+    content: base64String,
+    message: `${name}/${version}@${user}/${channel}#${rrev} ${filename}`,
+    path: `${request_to_path(req).join('/')}/export/${filename}`,
+    branch: req.app.locals.branch,
+  })
+  return res.status(result.status).send()
 }
 
 export async function getSearch(req, res) {
