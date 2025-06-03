@@ -112,12 +112,19 @@ export async function getRecipeLatest(req, res) {
 }
 
 export async function getRecipeRevisions(req, res) {
-  const revisions = (await getAllRecipeRevisions(req)).map((rev) => {
-    return {
-      revision: rev.revision,
-      time: new Date(rev.time * 1000).toISOString(),
+  let revisions = new Array()
+  try {
+    revisions = (await getAllRecipeRevisions(req)).map((rev) => {
+      return {
+        revision: rev.revision,
+        time: new Date(rev.time * 1000).toISOString(),
+      }
+    })
+  } catch (error) {
+    if(error.status != 404) {
+      throw error
     }
-  })
+  }
   res.status(200).send({ revisions })
 }
 /*

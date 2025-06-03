@@ -80,11 +80,15 @@ build
 #  sleep 60
 #fi
 
+header TRY TO UPLOAD NON EXISTING RECIPE
+conan export tests/packages/library --user nonexistinguser --channel nonexistingchannel
+conan upload  --remote cocoserver ${reference}@nonexistinguser/nonexistingchannel --confirm --only-recipe --dry-run
+
 header BUILD FROM SOURCE
 ${remove_packages} --remote cocoserver
 ${upload_recipe}
 ${remove_all}
-sleep 60
+
 ! capture ${install}
 expect "ERROR: Missing prebuilt package for '${reference}'" \
   || expect "ERROR: ${reference} was not found in remote 'cocoserver'"
@@ -94,14 +98,14 @@ build
 header BUILD FROM BINARY
 ${upload_all}
 ${remove_all}
-sleep 60
+
 ${install}
 build
 
 header BUILD FROM SOURCE AGAIN
 ${remove_packages} --remote cocoserver
 ${remove_all}
-sleep 60
+
 ! capture ${install}
 expect "ERROR: Missing prebuilt package for '${reference}'"
 ${install} --build missing
@@ -120,7 +124,7 @@ build
 header RE-UPLOAD
 ${export}
 ${upload_all}
-sleep 60
+
 ${upload_all}
 
 header UNAUTHENTICATED
