@@ -19,14 +19,14 @@ export async function deleteRecipe(req, res) {
   */
 
 function sanitizeValue(val) {
-  if(val.includes("..") || val.includes("/") || val.includes("\\"))
-    throw new http.Error(500, `incorrect param value: ${val}`)  
+  if (val.includes('..') || val.includes('/') || val.includes('\\'))
+    throw new http.Error(500, `incorrect param value: ${val}`)
   return val
 }
 
 function sanitizeParams(req): Record<string, string> {
   let res = {}
-  for(const prop in req.params) {
+  for (const prop in req.params) {
     res[prop] = sanitizeValue(req.params[prop])
   }
   return res
@@ -61,31 +61,35 @@ async function getAllRecipeRevisions(req) {
     ref: req.app.locals.branch,
   })
   if (!Array.isArray(folder)) {
-    const {name, version, user, channel } = sanitizeParams(req)
-    throw http.notFound(
-      `Recipe missing: ${name}/${version}@${user}/${channel}`,
-    )
+    const { name, version, user, channel } = sanitizeParams(req)
+    throw http.notFound(`Recipe missing: ${name}/${version}@${user}/${channel}`)
   }
   const revisionPromises = folder
-    .filter(rev => rev.type === 'dir')
-    .map(async rev => {
+    .filter((rev) => rev.type === 'dir')
+    .map(async (rev) => {
       let retries = 5
       while (retries-- > 0) {
         const manifest = await fetch(
-          `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`
+          `https://raw.githubusercontent.com/${req.app.locals.owner}/${req.app.locals.repo}/${req.app.locals.branch}/${rev.path}/export/conanmanifest.txt`,
         )
         if (!manifest.ok) {
           if (manifest.status === 404) {
-            await new Promise(f => setTimeout(f, 100))
+            await new Promise((f) => setTimeout(f, 100))
             continue
           }
-          throw new http.Error(manifest.status, `Failed to fetch manifest for ${rev.path}`)
+          throw new http.Error(
+            manifest.status,
+            `Failed to fetch manifest for ${rev.path}`,
+          )
         }
         const content = await manifest.text()
         const timestamp = Number(content.split(/\r?\n/)[0])
         return { revision: rev.name, time: timestamp }
       }
-      throw new http.Error(500, `Failed to fetch manifest for ${rev.path} after retries`)
+      throw new http.Error(
+        500,
+        `Failed to fetch manifest for ${rev.path} after retries`,
+      )
     })
   return await Promise.all(revisionPromises)
 }
@@ -94,11 +98,11 @@ export async function getRecipeLatest(req, res) {
   const revisions = await getAllRecipeRevisions(req)
 
   if (revisions.length === 0) {
-    throw http.notFound("Not Found")
+    throw http.notFound('Not Found')
   }
   const latestRevision = revisions.reduce(
-    (latest, current) => current.time > latest.time ? current : latest,
-    { revision: null, time: 0 }
+    (latest, current) => (current.time > latest.time ? current : latest),
+    { revision: null, time: 0 },
   )
 
   res.status(200).send({
@@ -108,7 +112,7 @@ export async function getRecipeLatest(req, res) {
 }
 
 export async function getRecipeRevisions(req, res) {
-  const revisions = (await getAllRecipeRevisions(req)).map(rev => {
+  const revisions = (await getAllRecipeRevisions(req)).map((rev) => {
     return {
       revision: rev.revision,
       time: new Date(rev.time * 1000).toISOString(),
@@ -123,36 +127,40 @@ export async function deleteRecipeRevision(req, res) {
 }
 */
 
-
 async function getAllPackageRevisions(req) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  let rev_list : Array<string> = []
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
+    '/',
+  )
+  let rev_list: Array<string> = []
   try {
-    rev_list = await req.app.locals.filen.fs().readdir({path: package_folder})
+    rev_list = await req.app.locals.filen.fs().readdir({ path: package_folder })
   } catch (error) {
     if (error.code === 'ENOENT') {
       return []
-    }
-    else throw error
+    } else throw error
   }
-  return await Promise.all(rev_list.map(async (r) => {
-    const stat = await req.app.locals.filen.fs().stat({path: `${package_folder}/${r}`})
-    return {
-      revision: r,
-      time: Number(stat.birthtimeMs),
-    }
-  }))
+  return await Promise.all(
+    rev_list.map(async (r) => {
+      const stat = await req.app.locals.filen
+        .fs()
+        .stat({ path: `${package_folder}/${r}` })
+      return {
+        revision: r,
+        time: Number(stat.birthtimeMs),
+      }
+    }),
+  )
 }
 
-export async function getPackageLatest(req, res) {  
+export async function getPackageLatest(req, res) {
   const revisions = await getAllPackageRevisions(req)
 
   if (revisions.length === 0) {
-    throw http.notFound("Not Found")
+    throw http.notFound('Not Found')
   }
   const latestRevision = revisions.reduce(
-    (latest, current) => current.time > latest.time ? current : latest,
-    { revision: null, time: 0 }
+    (latest, current) => (current.time > latest.time ? current : latest),
+    { revision: null, time: 0 },
   )
   res.status(200).send({
     revision: latestRevision.revision,
@@ -161,8 +169,7 @@ export async function getPackageLatest(req, res) {
 }
 
 export async function getPackageRevisions(req, res) {
-  
-  const revisions = (await getAllPackageRevisions(req)).map(rev => {
+  const revisions = (await getAllPackageRevisions(req)).map((rev) => {
     return {
       revision: rev.revision,
       time: new Date(rev.time).toISOString(),
@@ -173,74 +180,93 @@ export async function getPackageRevisions(req, res) {
 
 export async function deletePackageRevision(req, res) {
   await req.app.locals.filen.fs().rmdir({
-    path: [req.app.locals.folder, ...request_to_path(req)].join('/')
+    path: [req.app.locals.folder, ...request_to_path(req)].join('/'),
   })
   res.status(200).send()
 }
 
 export async function getPackageRevisionFiles(req, res) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
+    '/',
+  )
 
-  res.status(200).send({ files: Object.fromEntries(
-    (await req.app.locals.filen.fs().readdir({path: package_folder})).map(file => [file, {}])
-  ) })
-  
+  res.status(200).send({
+    files: Object.fromEntries(
+      (await req.app.locals.filen.fs().readdir({ path: package_folder })).map(
+        (file) => [file, {}],
+      ),
+    ),
+  })
 }
 
 export async function getPackageRevisionFile(req, res) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  const destination_dir = await mkdtemp(join(tmpdir(), "rp"));
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
+    '/',
+  )
+  const destination_dir = await mkdtemp(join(tmpdir(), 'rp'))
   const { filename } = sanitizeParams(req)
   await req.app.locals.filen.fs().download({
     path: `${package_folder}/${filename}`,
-    destination: `${destination_dir}/${filename}`})
+    destination: `${destination_dir}/${filename}`,
+  })
   res.status(200).send(await readFile(`${destination_dir}/${filename}`))
   await rm(destination_dir, { recursive: true, force: true })
 }
 
 export async function putPackageRevisionFile(req, res) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  const source_dir = await mkdtemp(join(tmpdir(), "rp"));
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
+    '/',
+  )
+  const source_dir = await mkdtemp(join(tmpdir(), 'rp'))
   const { filename } = sanitizeParams(req)
-  const pipe_res = await pipeline(req, createWriteStream(`${source_dir}/${filename}`))
-  if( filename == "conaninfo.txt" ){
+  const pipe_res = await pipeline(
+    req,
+    createWriteStream(`${source_dir}/${filename}`),
+  )
+  if (filename == 'conaninfo.txt') {
     const stats = await stat(`${source_dir}/${filename}`)
-    if ( stats.size == 0 )
-      await writeFile(`${source_dir}/${filename}`, "\n")
+    if (stats.size == 0) await writeFile(`${source_dir}/${filename}`, '\n')
   }
 
   const uploaded_file = await req.app.locals.filen.fs().upload({
     path: `${package_folder}/${filename}`,
-    source: `${source_dir}/${filename}`})
+    source: `${source_dir}/${filename}`,
+  })
   res.status(201).send()
   await rm(source_dir, { recursive: true, force: true })
 }
 
 export async function getRecipeRevisionSearch(req, res) {
-  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join('/')
-  let packages_list : Array<string> = []
+  const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
+    '/',
+  )
+  let packages_list: Array<string> = []
   try {
-    packages_list = await req.app.locals.filen.fs().readdir({path: package_folder})
+    packages_list = await req.app.locals.filen
+      .fs()
+      .readdir({ path: package_folder })
   } catch (error) {
     if (error.code === 'ENOENT') {
       res.status(200).send({})
       return
-    }
-    else{
+    } else {
       console.warn(error)
       throw error
     }
   }
-  
+
   let packages = new Object()
-  const destination_dir = await mkdtemp(join(tmpdir(), "rp"));
+  const destination_dir = await mkdtemp(join(tmpdir(), 'rp'))
   for (const p of packages_list) {
     /*const last_rev = TBD
       await req.app.locals.filen.fs().download({
       path: join(package_folder, p, last_rev, 'conaninfo.txt'),
       destination: join(destination_dir, p, last_rev, 'conaninfo.txt')
     })*/
-      packages[p] = {content: ''/*await readFile(join(destination_dir, r, last_rev, 'conaninfo.txt'))*/}
+    packages[p] = {
+      content:
+        '' /*await readFile(join(destination_dir, r, last_rev, 'conaninfo.txt'))*/,
+    }
   }
   res.status(200).send(packages)
   await rm(destination_dir, { recursive: true, force: true })
@@ -308,14 +334,14 @@ export async function getSearch(req, res) {
   for (let i = 0; i < 4; i++) {
     let newFolders: Array<string> = []
     for (const f of folders) {
-      if(f != '.') {
+      if (f != '.') {
         let [name, version, user, channel] = f.split('/')
         let tokens = [name]
-        if (version){
+        if (version) {
           tokens.push('/', version)
           if (user) {
             if (user != '_') tokens.push('@', user)
-            if(channel) {
+            if (channel) {
               if (channel != '_') tokens.push('/', channel)
             }
           }
