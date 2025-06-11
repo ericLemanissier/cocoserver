@@ -5,13 +5,10 @@ set -o errexit
 set -o pipefail
 set -o xtrace
 
-revisions=${REVISIONS:-True}
 remote=${REMOTE:-http://localhost:9595}
 
-owner=
 package=fictitious-lib
 version=0.1.0
-host=localhost
 
 reference=${package}/${version}
 

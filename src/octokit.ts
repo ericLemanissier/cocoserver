@@ -39,6 +39,6 @@ export function newOctokit(req, write = false) {
       throw cause
     }
   }
-  let octokit = new Octokit({ auth })
+  const octokit = new Octokit({ auth })
   return { user, auth, octokit }
 }

@@ -74,7 +74,7 @@ router.get(`${PATHS.$rrev}/search`, controllers.getRecipeRevisionSearch)
 router.get(`${PATHS.$package}/latest`, controllers.getPackageLatest)
 router.get(`${PATHS.$package}/revisions`, controllers.getPackageRevisions)
 
-router.delete(`${PATHS.$prev}`, controllers.deletePackageRevision)
+router.delete(PATHS.$prev, controllers.deletePackageRevision)
 router.get(`${PATHS.$prev}/files`, controllers.getPackageRevisionFiles)
 router.get(`${PATHS.$prev}/files/:filename`, controllers.getPackageRevisionFile)
 router.put(`${PATHS.$prev}/files/:filename`, controllers.putPackageRevisionFile)

@@ -25,16 +25,16 @@ function sanitizeValue(val) {
 }
 
 function sanitizeParams(req): Record<string, string> {
-  let res = {}
+  const res = {}
   for (const prop in req.params) {
     res[prop] = sanitizeValue(req.params[prop])
   }
   return res
 }
 
-function request_to_path(req): Array<string> {
+function request_to_path(req): string[] {
   const params = sanitizeParams(req)
-  let res: Array<string> = [
+  const res: string[] = [
     params.name,
     params.version,
     params.user,
@@ -112,7 +112,7 @@ export async function getRecipeLatest(req, res) {
 }
 
 export async function getRecipeRevisions(req, res) {
-  let revisions = new Array()
+  let revisions = []
   try {
     revisions = (await getAllRecipeRevisions(req)).map((rev) => {
       return {
@@ -138,7 +138,7 @@ async function getAllPackageRevisions(req) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
-  let rev_list: Array<string> = []
+  let rev_list: string[] = []
   try {
     rev_list = await req.app.locals.filen.fs().readdir({ path: package_folder })
   } catch (error) {
@@ -226,7 +226,7 @@ export async function putPackageRevisionFile(req, res) {
   )
   const source_dir = await mkdtemp(join(tmpdir(), 'rp'))
   const { filename } = sanitizeParams(req)
-  const pipe_res = await pipeline(
+  await pipeline(
     req,
     createWriteStream(`${source_dir}/${filename}`),
   )
@@ -235,7 +235,7 @@ export async function putPackageRevisionFile(req, res) {
     if (stats.size == 0) await writeFile(`${source_dir}/${filename}`, '\n')
   }
 
-  const uploaded_file = await req.app.locals.filen.fs().upload({
+  await req.app.locals.filen.fs().upload({
     path: `${package_folder}/${filename}`,
     source: `${source_dir}/${filename}`,
   })
@@ -247,7 +247,7 @@ export async function getRecipeRevisionSearch(req, res) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
-  let packages_list: Array<string> = []
+  let packages_list: string[] = []
   try {
     packages_list = await req.app.locals.filen
       .fs()
@@ -339,7 +339,7 @@ export async function getSearch(req, res) {
 
   let folders = ['.']
   for (let i = 0; i < 4; i++) {
-    let newFolders: Array<string> = []
+    let newFolders: string[] = []
     for (const f of folders) {
       if (f != '.') {
         let [name, version, user, channel] = f.split('/')
