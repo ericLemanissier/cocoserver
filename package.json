@@ -24,7 +24,7 @@
     "@filen/sdk": "^0.3.4",
     "commander": "^14.0.0",
     "express": "^5.1.0",
-    "minimatch": "^10.0.1",
+    "minimatch": "^10.0.3",
     "octokit": "^5.0.3"
   },
   "devDependencies": {
