@@ -121,7 +121,7 @@ export async function getRecipeRevisions(req, res) {
       }
     })
   } catch (error) {
-    if(error.status != 404) {
+    if (error.status != 404) {
       throw error
     }
   }
@@ -226,10 +226,7 @@ export async function putPackageRevisionFile(req, res) {
   )
   const source_dir = await mkdtemp(join(tmpdir(), 'rp'))
   const { filename } = sanitizeParams(req)
-  await pipeline(
-    req,
-    createWriteStream(`${source_dir}/${filename}`),
-  )
+  await pipeline(req, createWriteStream(`${source_dir}/${filename}`))
   if (filename == 'conaninfo.txt') {
     const stats = await stat(`${source_dir}/${filename}`)
     if (stats.size == 0) await writeFile(`${source_dir}/${filename}`, '\n')
