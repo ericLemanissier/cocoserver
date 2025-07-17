@@ -5,7 +5,7 @@
     "target": "es2022",
     "module": "es2022",
     "moduleResolution": "bundler",
-    "types": ["node", "jest"],
+    "types": ["node"],
     "outDir": "dist",
     "sourceMap": true
   }
