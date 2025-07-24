@@ -139,12 +139,16 @@ async function getAllPackageRevisions(req) {
     '/',
   )
   let rev_list: string[] = []
-  try {
-    rev_list = await req.app.locals.filen.fs().readdir({ path: package_folder })
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return []
-    } else throw error
+  if (req.app.locals.filen) {
+    try {
+      rev_list = await req.app.locals.filen
+        .fs()
+        .readdir({ path: package_folder })
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return []
+      } else throw error
+    }
   }
   return await Promise.all(
     rev_list.map(async (r) => {
@@ -245,17 +249,19 @@ export async function getRecipeRevisionSearch(req, res) {
     '/',
   )
   let packages_list: string[] = []
-  try {
-    packages_list = await req.app.locals.filen
-      .fs()
-      .readdir({ path: package_folder })
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      res.status(200).send({})
-      return
-    } else {
-      console.warn(error)
-      throw error
+  if (req.app.locals.filen) {
+    try {
+      packages_list = await req.app.locals.filen
+        .fs()
+        .readdir({ path: package_folder })
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        res.status(200).send({})
+        return
+      } else {
+        console.warn(error)
+        throw error
+      }
     }
   }
 

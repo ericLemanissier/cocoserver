@@ -36,11 +36,17 @@ app.locals.repo = repo
 app.locals.branch = branch
 app.locals.folder = folder
 
-app.locals.filen = new FilenSDK()
-await app.locals.filen.login({
-  email: process.env.FILEN_EMAIL,
-  password: process.env.FILEN_PASSWORD,
-})
+const email = process.env.FILEN_EMAIL
+const password = process.env.FILEN_PASSWORD
+if (email && password) {
+  app.locals.filen = new FilenSDK()
+  await app.locals.filen.login({
+    email,
+    password,
+  })
+} else {
+  app.locals.filen = undefined
+}
 
 app.set('trust proxy', true)
 
