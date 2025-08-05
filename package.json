@@ -21,7 +21,7 @@
   "author": "John Freeman <jfreeman08@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@filen/sdk": "^0.3.7",
+    "@filen/sdk": "^0.3.9",
     "commander": "^14.0.0",
     "express": "^5.1.0",
     "minimatch": "^10.0.3",
