@@ -17,7 +17,7 @@ jobs:
     concurrency:
       group: example-group
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: oven-sh/setup-bun@v2
       with:
         bun-version: latest
@@ -44,7 +44,7 @@ jobs:
       contents: read
       packages: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: oven-sh/setup-bun@v2
       with:
         bun-version: latest
