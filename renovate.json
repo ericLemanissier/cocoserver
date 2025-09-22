@@ -3,9 +3,8 @@
   "extends": [
     "config:recommended"
   ],
-  "config": {
-    "forkProcessing": "enabled",
-  }
+  "forkProcessing": "enabled",
 }
+
 
 
