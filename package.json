@@ -28,7 +28,7 @@
     "octokit": "^5.0.5"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.0.6",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3"
   },
