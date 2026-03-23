@@ -1,5 +1,6 @@
 {
   "include": ["src/**/*.ts"],
+  "rootDir": "./src",
   "compilerOptions": {
     "esModuleInterop": true,
     "target": "es2022",
