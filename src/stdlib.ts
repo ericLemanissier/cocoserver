@@ -1,9 +1,10 @@
 import { Buffer } from 'node:buffer'
+import * as stream from "node:stream";
 
-export function readStream(stream): Promise<Buffer> {
+export function readStream(stream: stream.Readable): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const data = []
-    stream.on('data', (chunk) => {
+    const data: Uint8Array[] = []
+    stream.on('data', (chunk: Uint8Array) => {
       data.push(chunk)
     })
     stream.on('end', () => {

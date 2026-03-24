@@ -2,14 +2,16 @@ import { Octokit } from 'octokit'
 import { badRequest, authenticationException } from './http.js'
 import { Buffer } from 'node:buffer'
 
+import { Request } from 'express'
+
 /**
  * In the Authorization header, the bearer token is the base64-encoded string
  * `{user}:{auth}`.
  */
-export function parseBearer(req) {
+export function parseBearer(req: Request): {user:string, auth:string} {
   const header = req.get('Authorization')
   if (!header) {
-    const { user, auth } = req.query
+    const { user, auth } = req.query as {user:string, auth: string}
     if (user && auth) {
       return { user, auth }
     }
@@ -29,7 +31,7 @@ export function parseBearer(req) {
   return { user, auth }
 }
 
-export function newOctokit(req, write = false) {
+export function newOctokit(req: Request, write = false) {
   let user = '<anonymous>'
   let auth = undefined
   try {

@@ -89,15 +89,12 @@ router.all('/*splat', (req, res) => {
     req.method,
     req.originalUrl,
     req.headers,
-    req.mimeType,
-    req.type,
-    req.encoding,
   )
   res.status(501).send()
 })
 
 // The catcher for all uncaught exceptions.
-router.use((err, req, res, next) => {
+router.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof http.Error) {
     return res.status(err.code).send(err.message)
   }
