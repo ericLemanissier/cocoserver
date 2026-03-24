@@ -11,28 +11,31 @@ import { tmpdir } from 'node:os'
 import { pipeline } from 'node:stream/promises'
 import { minimatch } from 'minimatch'
 
+import { Request, Response } from 'express'
+import * as FilenSDK from '@filen/sdk'
+
 /*
-export async function deleteRecipe(req, res) {
+export async function deleteRecipe(req: Request, res: Response) {
 
   return res.send()
 }
   */
 
-function sanitizeValue(val) {
+function sanitizeValue(val: string) {
   if (val.includes('..') || val.includes('/') || val.includes('\\'))
     throw new http.Error(500, `incorrect param value: ${val}`)
   return val
 }
 
-function sanitizeParams(req): Record<string, string> {
-  const res = {}
+function sanitizeParams(req: Request): Record<string, string> {
+  const res: Record<string, string> = {}
   for (const prop in req.params) {
-    res[prop] = sanitizeValue(req.params[prop])
+    res[prop] = sanitizeValue(req.params[prop] as string)
   }
   return res
 }
 
-function request_to_path(req): string[] {
+function request_to_path(req: Request): string[] {
   const params = sanitizeParams(req)
   const res: string[] = [
     params.name,
@@ -52,7 +55,7 @@ function request_to_path(req): string[] {
   return res
 }
 
-async function getAllRecipeRevisions(req) {
+async function getAllRecipeRevisions(req: Request) {
   const { octokit } = newOctokit(req, false)
   const { data: folder } = await octokit.rest.repos.getContent({
     owner: req.app.locals.owner,
@@ -94,7 +97,7 @@ async function getAllRecipeRevisions(req) {
   return await Promise.all(revisionPromises)
 }
 
-export async function getRecipeLatest(req, res) {
+export async function getRecipeLatest(req: Request, res: Response) {
   const revisions = await getAllRecipeRevisions(req)
 
   if (revisions.length === 0) {
@@ -102,7 +105,7 @@ export async function getRecipeLatest(req, res) {
   }
   const latestRevision = revisions.reduce(
     (latest, current) => (current.time > latest.time ? current : latest),
-    { revision: null, time: 0 },
+    { revision: '', time: 0 },
   )
 
   res.status(200).send({
@@ -111,8 +114,8 @@ export async function getRecipeLatest(req, res) {
   })
 }
 
-export async function getRecipeRevisions(req, res) {
-  let revisions = []
+export async function getRecipeRevisions(req: Request, res: Response) {
+  let revisions: {revision: String, time: String}[] = []
   try {
     revisions = (await getAllRecipeRevisions(req)).map((rev) => {
       return {
@@ -120,21 +123,21 @@ export async function getRecipeRevisions(req, res) {
         time: new Date(rev.time * 1000).toISOString(),
       }
     })
-  } catch (error) {
-    if (error.status != 404) {
+  } catch (error: any) {
+    if (!(error instanceof http.Error) || error.code != 404) {
       throw error
     }
   }
   res.status(200).send({ revisions })
 }
 /*
-export async function deleteRecipeRevision(req, res) {
+export async function deleteRecipeRevision(req: Request, res: Response) {
 
   return res.send()
 }
 */
 
-async function getAllPackageRevisions(req) {
+async function getAllPackageRevisions(req: Request) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
@@ -144,8 +147,8 @@ async function getAllPackageRevisions(req) {
       rev_list = await req.app.locals.filen
         .fs()
         .readdir({ path: package_folder })
-    } catch (error) {
-      if (error.code === 'ENOENT') {
+    } catch (error: any) {
+      if (error instanceof FilenSDK.APIError && error.code === 'ENOENT') {
         return []
       } else throw error
     }
@@ -163,7 +166,7 @@ async function getAllPackageRevisions(req) {
   )
 }
 
-export async function getPackageLatest(req, res) {
+export async function getPackageLatest(req: Request, res: Response) {
   const revisions = await getAllPackageRevisions(req)
 
   if (revisions.length === 0) {
@@ -171,7 +174,7 @@ export async function getPackageLatest(req, res) {
   }
   const latestRevision = revisions.reduce(
     (latest, current) => (current.time > latest.time ? current : latest),
-    { revision: null, time: 0 },
+    { revision: '', time: 0 },
   )
   res.status(200).send({
     revision: latestRevision.revision,
@@ -179,7 +182,7 @@ export async function getPackageLatest(req, res) {
   })
 }
 
-export async function getPackageRevisions(req, res) {
+export async function getPackageRevisions(req: Request, res: Response) {
   const revisions = (await getAllPackageRevisions(req)).map((rev) => {
     return {
       revision: rev.revision,
@@ -189,14 +192,14 @@ export async function getPackageRevisions(req, res) {
   res.status(200).send({ revisions })
 }
 
-export async function deletePackageRevision(req, res) {
+export async function deletePackageRevision(req: Request, res: Response) {
   await req.app.locals.filen.fs().rmdir({
     path: [req.app.locals.folder, ...request_to_path(req)].join('/'),
   })
   res.status(200).send()
 }
 
-export async function getPackageRevisionFiles(req, res) {
+export async function getPackageRevisionFiles(req: Request, res: Response) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
@@ -204,13 +207,13 @@ export async function getPackageRevisionFiles(req, res) {
   res.status(200).send({
     files: Object.fromEntries(
       (await req.app.locals.filen.fs().readdir({ path: package_folder })).map(
-        (file) => [file, {}],
+        (file: string) => [file, {}],
       ),
     ),
   })
 }
 
-export async function getPackageRevisionFile(req, res) {
+export async function getPackageRevisionFile(req: Request, res: Response) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
@@ -224,7 +227,7 @@ export async function getPackageRevisionFile(req, res) {
   await rm(destination_dir, { recursive: true, force: true })
 }
 
-export async function putPackageRevisionFile(req, res) {
+export async function putPackageRevisionFile(req: Request, res: Response) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
@@ -244,7 +247,7 @@ export async function putPackageRevisionFile(req, res) {
   await rm(source_dir, { recursive: true, force: true })
 }
 
-export async function getRecipeRevisionSearch(req, res) {
+export async function getRecipeRevisionSearch(req: Request, res: Response) {
   const package_folder = [req.app.locals.folder, ...request_to_path(req)].join(
     '/',
   )
@@ -254,8 +257,8 @@ export async function getRecipeRevisionSearch(req, res) {
       packages_list = await req.app.locals.filen
         .fs()
         .readdir({ path: package_folder })
-    } catch (error) {
-      if (error.code === 'ENOENT') {
+    } catch (error: any) {
+      if (error instanceof FilenSDK.APIError && error.code === 'ENOENT') {
         res.status(200).send({})
         return
       } else {
@@ -265,7 +268,7 @@ export async function getRecipeRevisionSearch(req, res) {
     }
   }
 
-  let packages = new Object()
+  let packages: Record<string, {content: String}> = {}
   const destination_dir = await mkdtemp(join(tmpdir(), 'rp'))
   for (const p of packages_list) {
     /*const last_rev = TBD
@@ -282,7 +285,7 @@ export async function getRecipeRevisionSearch(req, res) {
   await rm(destination_dir, { recursive: true, force: true })
 }
 
-export async function getRecipeRevisionFiles(req, res) {
+export async function getRecipeRevisionFiles(req: Request, res: Response) {
   const { octokit } = newOctokit(req, false)
   const { data: folder } = await octokit.rest.repos.getContent({
     owner: req.app.locals.owner,
@@ -290,7 +293,7 @@ export async function getRecipeRevisionFiles(req, res) {
     path: `${request_to_path(req).join('/')}/export`,
     ref: req.app.locals.branch,
   })
-  let files = {}
+  let files: Record<string, {}> = {}
   // ignore non-directory responses
   if (!Array.isArray(folder)) {
     return
@@ -302,7 +305,7 @@ export async function getRecipeRevisionFiles(req, res) {
   res.status(200).send({ files })
 }
 
-export async function getRecipeRevisionFile(req, res) {
+export async function getRecipeRevisionFile(req: Request, res: Response) {
   const { filename } = sanitizeParams(req)
   return res.redirect(
     301,
@@ -310,7 +313,7 @@ export async function getRecipeRevisionFile(req, res) {
   )
 }
 
-export async function putRecipeRevisionFile(req, res) {
+export async function putRecipeRevisionFile(req: Request, res: Response) {
   const { octokit } = newOctokit(req, true)
   const buffer: Buffer = await readStream(req)
   const base64String = buffer.toString('base64')
@@ -327,7 +330,7 @@ export async function putRecipeRevisionFile(req, res) {
   return res.status(result.status).send()
 }
 
-export async function getSearch(req, res) {
+export async function getSearch(req: Request, res: Response) {
   const repo_folder = await mkdtemp(join(tmpdir(), 'cocoserver-repo-'))
   await promisify(execFile)('git', [
     'clone',
@@ -360,7 +363,7 @@ export async function getSearch(req, res) {
         for (const token of tokens) {
           partial += token
         }
-        if (!minimatch(partial, req.query.q, { partial: true })) {
+        if (!minimatch(partial, req.query.q as string, { partial: true })) {
           continue
         }
       }
@@ -384,7 +387,7 @@ export async function getSearch(req, res) {
     let partial = ''
     for (const token of tokens) {
       partial += token
-      if (minimatch(partial, req.query.q)) {
+      if (minimatch(partial, req.query.q as string)) {
         results.push(tokens.join(''))
         break
       }
